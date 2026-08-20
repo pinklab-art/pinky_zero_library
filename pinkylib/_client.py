@@ -15,6 +15,7 @@
 import itertools
 import json
 import os
+import sys
 import threading
 import time
 
@@ -84,15 +85,33 @@ class _Client:
         self._want = False
         self._connected = threading.Event()
         self._kicked = None       # 서버가 내보낸 이유. 있으면 자동 재연결을 하지 않는다
+        self._ever = False        # 한 번이라도 붙은 적 있는지(에러 문구 구분용)
 
     # --- 연결 ---
     def connect(self, host=DEFAULT_HOST, port=8765, timeout=5, stream_hz=30):
+        """로봇에 접속. 붙었으면 True.
+
+        시간 안에 못 붙어도 예외는 내지 않는다 — 주피터에서 셀을 죽이는 것보다
+        경고를 보여주고 뒤에서 계속 다시 붙는 편이 낫다(로봇을 그제서야 켜는 일이 잦다).
+        대신 조용히 넘어가지는 않는다. 예전엔 아무 말이 없어서, 다음 셀에서
+        "서버 연결 끊김" 이 나올 때까지 못 붙은 줄을 몰랐다.
+        """
         self.url = f"ws://{host}:{port}"
         self._stream_hz = stream_hz
         self._kicked = None       # 다시 붙는 것이므로 지난 강제종료 기록은 지운다
         self._want = True
         threading.Thread(target=self._supervisor, args=(timeout,), daemon=True).start()
-        self._connected.wait(timeout + 1)   # 최초 연결까지 대기
+        ok = self._connected.wait(timeout + 1)   # 최초 연결까지 대기
+        if not ok:
+            print(
+                f"\u26a0 로봇에 접속하지 못했습니다 ({self.url}, {timeout + 1:.0f}초 기다림).\n"
+                "   \u00b7 로봇 AP(pinky_z####)에 연결돼 있는지 확인하세요.\n"
+                '   \u00b7 공유기를 거쳐 쓴다면 connect("로봇IP") 로 주소를 넘기세요.\n'
+                "   \u00b7 로봇 전원이 켜져 있고 부팅이 끝났는지(표정 화면) 확인하세요.\n"
+                "   뒤에서 계속 다시 시도합니다 — 로봇을 켜면 알아서 붙습니다.\n"
+                "   pinkylib.client().connected 로 지금 상태를 볼 수 있습니다.",
+                file=sys.stderr)
+        return ok
 
     @property
     def connected(self):
@@ -119,6 +138,14 @@ class _Client:
                     f"연결 안 됨. pinkylib.connect() 를 먼저 호출하세요 "
                     f"(주소 생략 시 {DEFAULT_HOST}).")
 
+    def _conn_error(self, tail="."):
+        """연결 에러 문구. 한 번도 못 붙은 경우와 붙었다 끊긴 경우를 나눈다 —
+        처음부터 못 붙었는데 "끊김" 이라고 하면 원인을 엉뚱한 데서 찾게 된다."""
+        if self._ever:
+            return ConnectionError("서버 연결 끊김(재연결 중)" + tail)
+        return ConnectionError(
+            f"로봇에 아직 접속하지 못했습니다 ({self.url}) — 뒤에서 다시 시도 중" + tail)
+
     # --- 감독 루프: 끊기면 자동 재연결 ---
     def _supervisor(self, timeout):
         backoff = 0.5
@@ -128,6 +155,7 @@ class _Client:
                                                  max_size=None, enable_multithread=True)
                 ws.settimeout(5)
                 self.ws = ws
+                self._ever = True
                 self._connected.set()
                 backoff = 0.5
                 # 리더가 아직 안 돌아 응답을 못 받으므로 fire-and-forget 로 보낸다
@@ -223,7 +251,7 @@ class _Client:
         wait=False 면 id 0 으로 보내 서버가 응답을 안 만든다."""
         self._ensure()
         if not self._connected.wait(timeout):
-            raise ConnectionError("서버 연결 끊김(재연결 중)")
+            raise self._conn_error()
         rid = next(self._ids) if wait else 0
         ev = box = None
         if wait:
@@ -265,7 +293,7 @@ class _Client:
     def call(self, cmd, timeout=3, **args):
         self._ensure()
         if not self._connected.wait(timeout):      # 재연결 중이면 잠깐 대기
-            raise ConnectionError("서버 연결 끊김(재연결 중)")
+            raise self._conn_error()
         try:
             return self._raw_call(cmd, timeout, **args)
         except (websocket.WebSocketException, OSError) as e:
@@ -286,9 +314,8 @@ class _Client:
                 return self.call("status.get")
             except Exception as e:
                 age = time.time() - self._status_ts if self._status_ts else None
-                raise ConnectionError(
-                    "서버 연결 끊김"
-                    + (f" (마지막 값 {age:.1f}초 전)" if age else "")
+                raise self._conn_error(
+                    (f" (마지막 값 {age:.1f}초 전)" if age else "")
                     + ".\n   pinkylib.client().connected 으로 연결 상태 확인해보세요.") from e
         return self._status
 
@@ -321,8 +348,11 @@ def client():
 
 
 def connect(host=DEFAULT_HOST, port=8765, **kw):
-    """로봇에 접속. host 를 생략하면 DEFAULT_HOST(로봇 AP 주소)."""
-    _CLIENT.connect(host, port, **kw)
+    """로봇에 접속. host 를 생략하면 DEFAULT_HOST(로봇 AP 주소).
+
+    못 붙으면 경고를 찍고 False 를 돌려준다(예외는 안 낸다).
+    """
+    return _CLIENT.connect(host, port, **kw)
 
 
 def disconnect():
