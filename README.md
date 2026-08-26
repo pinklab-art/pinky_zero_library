@@ -1,19 +1,19 @@
-# Pinky Zero — 원격 제어 라이브러리 `pinkylib`
+# Pinky Zero — 원격 제어 라이브러리 `pinkyzero`
 
 제로 보드는 CPU가 약하고 무거운 모듈 import가 느리다. 그래서 **로봇에는 가벼운 상주 서버**만 두고,
-**PC에서 `pinkylib`으로 조종**한다. 무거운 비전(YOLO 등)은 PC가 맡는다.
+**PC에서 `pinkyzero`으로 조종**한다. 무거운 비전(YOLO 등)은 PC가 맡는다.
 
 ```
-[PC] pinkylib  --WebSocket-->  [Zero] pinky_server  --시리얼-->  [Pico]
+[PC] pinkyzero  --WebSocket-->  [Zero] pinky_server  --시리얼-->  [Pico]
      Motor().set_rpm(30)            하드웨어 담당          모터/센서/LED
      비전/AI                        import 한 번만
 ```
 
-- `pinkylib/` : **PC에서** 쓰는 클라이언트 라이브러리(WebSocket). 이 저장소에 있는 건 이것뿐이다.
+- `pinkyzero/` : **PC에서** 쓰는 클라이언트 라이브러리(WebSocket). 이 저장소에 있는 건 이것뿐이다.
 - 짝이 되는 `pinky_server` 는 **로봇에 미리 설치돼 부팅 때 자동 실행**된다(여기 없음).
 
 > 센서·액추에이터 제어는 **웹소켓으로 통일**한다. 로봇 위에서 코딩할 때도
-> `pinkylib.connect("localhost")` 로 같은 서버에 붙는다.
+> `pinkyzero.connect("localhost")` 로 같은 서버에 붙는다.
 
 ## 설치
 
@@ -30,13 +30,13 @@ pip install -e .
 
 **② PC**
 ```python
-import pinkylib
-pinkylib.connect()                          # 기본 192.168.7.1 (로봇 AP에 붙었을 때)
+import pinkyzero
+pinkyzero.connect()                          # 기본 192.168.7.1 (로봇 AP에 붙었을 때)
                                             # 공유기를 거치면 connect("로봇IP")
 
-pinkylib.enable_all()                       # 센서는 부팅 시 전부 OFF → 측정 켜기
+pinkyzero.enable_all()                       # 센서는 부팅 시 전부 OFF → 측정 켜기
 
-from pinkylib import Battery, IR, Motor, LED, Camera
+from pinkyzero import Battery, IR, Motor, LED, Camera
 print(Battery().get_voltage())              # 배터리 전압
 print(IR().read_floor())                    # 바닥 라인센서 5채널
 
@@ -46,7 +46,7 @@ LED().set_color(0, 128, 255)                # 파랑
 cam = Camera(); cam.start(15)
 frame = cam.read_array()                    # OpenCV BGR 배열
 
-pinkylib.disconnect()                       # 다 쓰면 꼭. 로봇이 자기 화면으로 돌아간다
+pinkyzero.disconnect()                       # 다 쓰면 꼭. 로봇이 자기 화면으로 돌아간다
 ```
 
 > `disconnect()` 를 안 부르면 프로그램이 살아있는 동안 로봇 화면이 **코딩 모드에 묶여**
@@ -54,7 +54,7 @@ pinkylib.disconnect()                       # 다 쓰면 꼭. 로봇이 자기 �
 
 **③ 로봇 위에서 직접 코딩할 때** — 같은 라이브러리에 주소만 바꾼다.
 ```python
-pinkylib.connect("localhost")
+pinkyzero.connect("localhost")
 ```
 
 ## 센서 켜기
@@ -63,13 +63,13 @@ pinkylib.connect("localhost")
 
 | 함수 | 켜지는 것 |
 |---|---|
-| `pinkylib.enable_imu()` | IMU(BNO055) |
-| `pinkylib.enable_touch()` | 터치(CST816) |
-| `pinkylib.enable_all()` | 위 셋 전부 |
-| `pinkylib.sensor_enabled()` | 현재 켜짐 상태 `{pico, imu, touch}` |
+| `pinkyzero.enable_imu()` | IMU(BNO055) |
+| `pinkyzero.enable_touch()` | 터치(CST816) |
+| `pinkyzero.enable_all()` | 위 셋 전부 |
+| `pinkyzero.sensor_enabled()` | 현재 켜짐 상태 `{pico, imu, touch}` |
 
 `Motor` 와 `LCD` 는 생성될 때 필요한 측정을 알아서 켠다.
-꺼진 센서를 읽으면 조용히 `None` 이 나오는 게 아니라 **`pinkylib.SensorOffError`** 가 뜨고,
+꺼진 센서를 읽으면 조용히 `None` 이 나오는 게 아니라 **`pinkyzero.SensorOffError`** 가 뜨고,
 무엇을 실행해야 하는지 메시지로 알려준다.
 
 ## 클래스

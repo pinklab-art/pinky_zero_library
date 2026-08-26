@@ -1,13 +1,13 @@
-# pinkylib (PC 클라이언트) 예제
+# pinkyzero (PC 클라이언트) 예제
 
 PC에서 WebSocket으로 로봇(Pinky Zero) 서버를 원격 제어하는 예제 모음.
 
 ## 준비
 ```bash
-pip install -e ..          # 저장소 루트의 pinkylib 설치 (필요 시)
+pip install -e ..          # 저장소 루트의 pinkyzero 설치 (필요 시)
 ```
 - 로봇에서 `pinky_server.py`가 떠 있어야 함 (`ws://<로봇IP>:8765`).
-- **IMU·카메라는 부팅 시 OFF** → 읽기 전에 `pinkylib.enable_imu()` / `Camera().start()` 로 켠다.
+- **IMU·카메라는 부팅 시 OFF** → 읽기 전에 `pinkyzero.enable_imu()` / `Camera().start()` 로 켠다.
   보드 그룹(배터리·IR·모션·버튼)은 로봇이 부팅부터 켜 두므로 켤 필요가 없다.
   (`Motor`/`LCD`는 생성 시 필요한 측정을 알아서 켬.)
 

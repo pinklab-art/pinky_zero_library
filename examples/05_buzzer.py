@@ -1,13 +1,13 @@
 """Buzzer - 알림음 / 음이름 / 멜로디 / 상황별 소리."""
 import time
 
-import pinkylib
-from pinkylib import Buzzer
+import pinkyzero
+from pinkyzero import Buzzer
 
 HOST = "192.168.7.1"        # 로봇 주소. 로봇 AP(pinky_zxxxx)에 붙었으면 이대로,
                             # 공유기를 거쳐 붙으면 로봇 IP 로 바꾼다
 
-pinkylib.connect(HOST)
+pinkyzero.connect(HOST)
 bz = Buzzer()
 
 print("알림음 1번 (4kHz - 가장 크게 들리는 소리)")
@@ -34,6 +34,6 @@ time.sleep(0.5)
 bz.close()
 print("완료")
 
-pinkylib.disconnect()   # 로봇을 코딩모드에서 내보낸다.
+pinkyzero.disconnect()   # 로봇을 코딩모드에서 내보낸다.
                         # 안 부르면 이 프로그램이 살아있는 동안 로봇 화면이
                         # 코딩모드에 묶여 있고, 로봇 3번 버튼도 안 먹는다.

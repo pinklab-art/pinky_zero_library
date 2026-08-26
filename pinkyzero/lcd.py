@@ -4,7 +4,7 @@
   - 화면 표시: 서버가 Pi SPI0 로 직접 그린다(로봇 전원 ON 이어야 MCU가 SPI 양보).
   - 터치: 서버 status 스트림의 touch_* 필드를 읽는다. enable(True) 로 측정을 켜야 값이 옴.
 
-    from pinkylib import LCD
+    from pinkyzero import LCD
     lcd = LCD()
     lcd.fill(0, 0, 40)                 # 남색으로 채우기
     lcd.image("face.png")             # 파일/PIL/ndarray 를 화면에

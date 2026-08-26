@@ -5,13 +5,13 @@
 """
 import time
 
-import pinkylib
-from pinkylib import Motor
+import pinkyzero
+from pinkyzero import Motor
 
 HOST = "192.168.7.1"        # 로봇 주소. 로봇 AP(pinky_zxxxx)에 붙었으면 이대로,
                             # 공유기를 거쳐 붙으면 로봇 IP 로 바꾼다
 
-pinkylib.connect(HOST)
+pinkyzero.connect(HOST)
 m = Motor()                     # 보드·모터 활성화는 Motor 가 알아서 한다
 try:
     print("전진 (30 RPM, 1.5s)")
@@ -30,6 +30,6 @@ finally:
     m.close()                   # 정지 + disable (안전)
     print("정지")
 
-pinkylib.disconnect()   # 로봇을 코딩모드에서 내보낸다.
+pinkyzero.disconnect()   # 로봇을 코딩모드에서 내보낸다.
                         # 안 부르면 이 프로그램이 살아있는 동안 로봇 화면이
                         # 코딩모드에 묶여 있고, 로봇 3번 버튼도 안 먹는다.

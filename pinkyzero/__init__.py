@@ -1,10 +1,10 @@
-"""pinkylib (Pinky Zero, PC용) - WebSocket으로 제로 서버를 원격 제어.
+"""pinkyzero (Pinky Zero, PC용) - WebSocket으로 제로 서버를 원격 제어.
 
-    import pinkylib
-    pinkylib.connect()                     # 한 번만. 기본 192.168.7.1
-    pinkylib.disconnect()                  # 다 쓰면. 로봇이 자기 화면으로 돌아간다
+    import pinkyzero
+    pinkyzero.connect()                     # 한 번만. 기본 192.168.7.1
+    pinkyzero.disconnect()                  # 다 쓰면. 로봇이 자기 화면으로 돌아간다
 
-    from pinkylib import Battery, IR, Motor, LED, Camera
+    from pinkyzero import Battery, IR, Motor, LED, Camera
     print(Battery().get_voltage())
     Motor().set_rpm(30, 30)
 """

@@ -4,13 +4,13 @@
 """
 import time
 
-import pinkylib
-from pinkylib import LCD
+import pinkyzero
+from pinkyzero import LCD
 
 HOST = "192.168.7.1"        # 로봇 주소. 로봇 AP(pinky_zxxxx)에 붙었으면 이대로,
                             # 공유기를 거쳐 붙으면 로봇 IP 로 바꾼다
 
-pinkylib.connect(HOST)
+pinkyzero.connect(HOST)
 lcd = LCD()
 lcd.backlight(True)             # 이전 실행이 꺼뒀을 수 있으니 켜고 시작
 
@@ -35,6 +35,6 @@ time.sleep(2)
 lcd.off()                       # 화면 지우고 백라이트 끄고 종료
 print("완료 (화면 꺼짐)")
 
-pinkylib.disconnect()   # 로봇을 코딩모드에서 내보낸다.
+pinkyzero.disconnect()   # 로봇을 코딩모드에서 내보낸다.
                         # 안 부르면 이 프로그램이 살아있는 동안 로봇 화면이
                         # 코딩모드에 묶여 있고, 로봇 3번 버튼도 안 먹는다.

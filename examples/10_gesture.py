@@ -5,13 +5,13 @@
 """
 import time
 
-import pinkylib
-from pinkylib import LCD
+import pinkyzero
+from pinkyzero import LCD
 
 HOST = "192.168.7.1"        # 로봇 주소. 로봇 AP(pinky_zxxxx)에 붙었으면 이대로,
                             # 공유기를 거쳐 붙으면 로봇 IP 로 바꾼다
 
-pinkylib.connect(HOST)
+pinkyzero.connect(HOST)
 lcd = LCD()
 lcd.enable(True)                # 터치 측정 ON
 
@@ -30,6 +30,6 @@ try:
 except KeyboardInterrupt:
     print(f"\n총 {n}개 제스처 인식. 종료")
 
-pinkylib.disconnect()   # 로봇을 코딩모드에서 내보낸다.
+pinkyzero.disconnect()   # 로봇을 코딩모드에서 내보낸다.
                         # 안 부르면 이 프로그램이 살아있는 동안 로봇 화면이
                         # 코딩모드에 묶여 있고, 로봇 3번 버튼도 안 먹는다.

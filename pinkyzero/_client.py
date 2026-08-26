@@ -1,4 +1,4 @@
-"""WebSocket 연결 싱글턴 - 모든 pinkylib 클래스가 공유.
+"""WebSocket 연결 싱글턴 - 모든 pinkyzero 클래스가 공유.
 
 안정성:
   - 자동 재연결(백오프) + 하트비트(ping)로 끊김/반쪽연결 감지 → 재접속
@@ -7,9 +7,9 @@
     센서 읽기도 마찬가지 — 낡은 캐시를 현재값처럼 돌려주지 않는다.
 
 사용:
-    import pinkylib
-    pinkylib.connect()          # 기본 192.168.7.1 (로봇 AP)
-    from pinkylib import Battery
+    import pinkyzero
+    pinkyzero.connect()          # 기본 192.168.7.1 (로봇 AP)
+    from pinkyzero import Battery
     print(Battery().get_voltage())
 """
 import itertools
@@ -53,8 +53,8 @@ _OFF_HINT = {
     # 보드 그룹은 로봇이 부팅부터 켜둔다. 여기 걸리면 옛 서버이거나 시리얼이
     # 끊긴 것이라, 학생이 켤 수 있는 게 없다 — 로봇을 다시 켜라고 안내한다.
     "pico": "로봇을 껐다 켜 보세요 (배터리·바닥/거리 IR·모션·버튼·엔코더)",
-    "imu": "IMU().enable()   또는  pinkylib.enable_imu()",
-    "touch": "LCD().enable()   또는  pinkylib.enable_touch()",
+    "imu": "IMU().enable()   또는  pinkyzero.enable_imu()",
+    "touch": "LCD().enable()   또는  pinkyzero.enable_touch()",
     "camera": "Camera().start()   (카메라 스트림 시작)",
 }
 
@@ -109,7 +109,7 @@ class _Client:
                 '   \u00b7 공유기를 거쳐 쓴다면 connect("로봇IP") 로 주소를 넘기세요.\n'
                 "   \u00b7 로봇 전원이 켜져 있고 부팅이 끝났는지(표정 화면) 확인하세요.\n"
                 "   뒤에서 계속 다시 시도합니다 — 로봇을 켜면 알아서 붙습니다.\n"
-                "   pinkylib.client().connected 로 지금 상태를 볼 수 있습니다.",
+                "   pinkyzero.client().connected 로 지금 상태를 볼 수 있습니다.",
                 file=sys.stderr)
         return ok
 
@@ -129,13 +129,13 @@ class _Client:
             if self._kicked:
                 raise RuntimeError(
                     f"로봇과의 연결이 끊겼습니다 ({self._kicked}). "
-                    f"계속 쓰려면 pinkylib.connect() 를 다시 호출하세요.")
+                    f"계속 쓰려면 pinkyzero.connect() 를 다시 호출하세요.")
             host = os.environ.get("PINKY_HOST")
             if host:
                 self.connect(host)
             else:
                 raise RuntimeError(
-                    f"연결 안 됨. pinkylib.connect() 를 먼저 호출하세요 "
+                    f"연결 안 됨. pinkyzero.connect() 를 먼저 호출하세요 "
                     f"(주소 생략 시 {DEFAULT_HOST}).")
 
     def _conn_error(self, tail="."):
@@ -316,7 +316,7 @@ class _Client:
                 age = time.time() - self._status_ts if self._status_ts else None
                 raise self._conn_error(
                     (f" (마지막 값 {age:.1f}초 전)" if age else "")
-                    + ".\n   pinkylib.client().connected 으로 연결 상태 확인해보세요.") from e
+                    + ".\n   pinkyzero.client().connected 으로 연결 상태 확인해보세요.") from e
         return self._status
 
     def require(self, group):
