@@ -86,6 +86,7 @@ class _Client:
         self._connected = threading.Event()
         self._kicked = None       # 서버가 내보낸 이유. 있으면 자동 재연결을 하지 않는다
         self._ever = False        # 한 번이라도 붙은 적 있는지(에러 문구 구분용)
+        self._sup = None          # 감독 스레드. 두 개가 되면 안 된다(connect 참고)
 
     # --- 연결 ---
     def connect(self, host=DEFAULT_HOST, port=8765, timeout=5, stream_hz=30):
@@ -96,11 +97,24 @@ class _Client:
         대신 조용히 넘어가지는 않는다. 예전엔 아무 말이 없어서, 다음 셀에서
         "서버 연결 끊김" 이 나올 때까지 못 붙은 줄을 몰랐다.
         """
-        self.url = f"ws://{host}:{port}"
+        url = f"ws://{host}:{port}"
+
+        # 주피터에서는 첫 셀을 다시 실행하는 일이 잦다. 그때마다 감독 스레드를
+        # 새로 띄우면 옛것이 안 죽고 남아, 둘이 같은 소켓과 응답 대기표를 두고
+        # 다툰다. 실측: connect 를 부를 때마다 스레드가 하나씩 늘고(2→3→4),
+        # 응답을 기다리는 명령이 "응답 없음: camera.stop" 으로 실패했다.
+        # 가벼운 명령은 재시도로 넘어가 티가 안 나서 더 나쁘다.
+        if self._want and self.url == url and self.connected:
+            return True           # 같은 주소로 이미 붙어 있다. 건드리지 않는다
+        self._teardown()          # 주소가 다르거나 끊겨 있으면 옛것부터 끝낸다
+
+        self.url = url
         self._stream_hz = stream_hz
         self._kicked = None       # 다시 붙는 것이므로 지난 강제종료 기록은 지운다
         self._want = True
-        threading.Thread(target=self._supervisor, args=(timeout,), daemon=True).start()
+        self._sup = threading.Thread(target=self._supervisor, args=(timeout,),
+                                     daemon=True)
+        self._sup.start()
         ok = self._connected.wait(timeout + 1)   # 최초 연결까지 대기
         if not ok:
             print(
@@ -112,6 +126,19 @@ class _Client:
                 "   pinkyzero.client().connected 로 지금 상태를 볼 수 있습니다.",
                 file=sys.stderr)
         return ok
+
+    def _teardown(self):
+        """돌고 있던 감독 루프를 끝내고 그 스레드가 실제로 빠질 때까지 기다린다."""
+        if not (self._want or (self._sup and self._sup.is_alive())):
+            return
+        self._want = False
+        try:
+            self.ws.close()
+        except Exception:
+            pass
+        if self._sup is not None:
+            self._sup.join(timeout=2.0)
+        self._connected.clear()
 
     @property
     def connected(self):
