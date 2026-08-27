@@ -45,28 +45,27 @@ class IMU:
         """
         import time
         self.enable(True)
-        print("🧭 IMU 캘리브레이션 — 안내대로 로봇을 움직여 주세요")
-        print("   • 자이로 : 로봇을 잠깐 가만히 두기")
-        print("   • 가속도 : 앞/뒤/옆/뒤집기 등 여러 방향으로 천천히 놓기")
-        print("   • 지자기 : 공중에서 크게 8자로 흔들기")
+        print("IMU calibration: gyro = hold still, "
+              "accel = tilt through several orientations, "
+              "mag = move in a figure eight")
         t0 = time.time()
         last = None
         while time.time() - t0 < timeout:
             c = self.calibration_status() or {}
             line = (f"sys {c.get('sys','?')}  gyro {c.get('gyro','?')}  "
-                    f"accel {c.get('accel','?')}  mag {c.get('mag','?')}  (목표 3)")
+                    f"accel {c.get('accel','?')}  mag {c.get('mag','?')}  (target 3)")
             if line != last:
-                print("   진행:", line)
+                print(" ", line)
                 last = line
             if full:
                 done = all(c.get(k) == 3 for k in ("gyro", "accel", "mag"))
             else:
                 done = c.get("sys") == 3
             if done:
-                print("✅ 캘리브레이션 완료!")
+                print("calibration done")
                 return True
             time.sleep(0.5)
-        print("⏱️ 시간 초과 — 아직 덜 됐어요:", last)
+        print("calibration timed out:", last)
         return False
 
     def read(self):

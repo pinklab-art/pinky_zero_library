@@ -52,21 +52,21 @@ class SensorOffError(RuntimeError):
 _OFF_HINT = {
     # 보드 그룹은 로봇이 부팅부터 켜둔다. 여기 걸리면 옛 서버이거나 시리얼이
     # 끊긴 것이라, 학생이 켤 수 있는 게 없다 — 로봇을 다시 켜라고 안내한다.
-    "pico": "로봇을 껐다 켜 보세요 (배터리·바닥/거리 IR·모션·버튼·엔코더)",
-    "imu": "IMU().enable()   또는  pinkyzero.enable_imu()",
-    "touch": "LCD().enable()   또는  pinkyzero.enable_touch()",
-    "camera": "Camera().start()   (카메라 스트림 시작)",
+    "pico": "power-cycle the robot (battery, floor/range IR, motion, buttons, encoders)",
+    "imu": "IMU().enable() or pinkyzero.enable_imu()",
+    "touch": "LCD().enable() or pinkyzero.enable_touch()",
+    "camera": "Camera().start()",
 }
 
 
 # 그룹별 주어(안내문 첫 단어). 없으면 "센서".
-_OFF_SUBJECT = {"camera": "카메라"}
+_OFF_SUBJECT = {"camera": "camera"}
 
 
 def _off_msg(group):
-    subj = _OFF_SUBJECT.get(group, "센서")
-    return (f"{subj}가 꺼져 있어 값을 읽을 수 없어요.\n"
-            f"   먼저 이걸 실행하세요 →  {_OFF_HINT.get(group, group)}")
+    subj = _OFF_SUBJECT.get(group, group)
+    return (f"{subj} is off; no values are coming in. "
+            f"run: {_OFF_HINT.get(group, group)}")
 
 
 class _Client:
@@ -117,14 +117,8 @@ class _Client:
         self._sup.start()
         ok = self._connected.wait(timeout + 1)   # 최초 연결까지 대기
         if not ok:
-            print(
-                f"\u26a0 로봇에 접속하지 못했습니다 ({self.url}, {timeout + 1:.0f}초 기다림).\n"
-                "   \u00b7 로봇 AP(pinky_z####)에 연결돼 있는지 확인하세요.\n"
-                '   \u00b7 공유기를 거쳐 쓴다면 connect("로봇IP") 로 주소를 넘기세요.\n'
-                "   \u00b7 로봇 전원이 켜져 있고 부팅이 끝났는지(표정 화면) 확인하세요.\n"
-                "   뒤에서 계속 다시 시도합니다 — 로봇을 켜면 알아서 붙습니다.\n"
-                "   pinkyzero.client().connected 로 지금 상태를 볼 수 있습니다.",
-                file=sys.stderr)
+            print(f"pinkyzero: could not reach {self.url} in {timeout + 1:.0f}s; "
+                  f"retrying in the background", file=sys.stderr)
         return ok
 
     def _teardown(self):
@@ -155,23 +149,23 @@ class _Client:
         if not self._want:
             if self._kicked:
                 raise RuntimeError(
-                    f"로봇과의 연결이 끊겼습니다 ({self._kicked}). "
-                    f"계속 쓰려면 pinkyzero.connect() 를 다시 호출하세요.")
+                    f"disconnected by the robot ({self._kicked}); "
+                    f"call pinkyzero.connect() again to continue")
             host = os.environ.get("PINKY_HOST")
             if host:
                 self.connect(host)
             else:
                 raise RuntimeError(
-                    f"연결 안 됨. pinkyzero.connect() 를 먼저 호출하세요 "
-                    f"(주소 생략 시 {DEFAULT_HOST}).")
+                    f"not connected; call pinkyzero.connect() first "
+                    f"(defaults to {DEFAULT_HOST})")
 
     def _conn_error(self, tail="."):
         """연결 에러 문구. 한 번도 못 붙은 경우와 붙었다 끊긴 경우를 나눈다 —
         처음부터 못 붙었는데 "끊김" 이라고 하면 원인을 엉뚱한 데서 찾게 된다."""
         if self._ever:
-            return ConnectionError("서버 연결 끊김(재연결 중)" + tail)
+            return ConnectionError("connection lost, reconnecting" + tail)
         return ConnectionError(
-            f"로봇에 아직 접속하지 못했습니다 ({self.url}) — 뒤에서 다시 시도 중" + tail)
+            f"never connected to {self.url}, still retrying" + tail)
 
     # --- 감독 루프: 끊기면 자동 재연결 ---
     def _supervisor(self, timeout):
@@ -295,10 +289,10 @@ class _Client:
             return None
         if not ev.wait(timeout):
             self._pending.pop(rid, None)
-            raise TimeoutError(f"응답 없음: 이진 {tag}")
+            raise TimeoutError(f"no reply to binary frame {tag}")
         r = box[0]
         if not r.get("ok"):
-            raise RuntimeError(r.get("error", f"이진 {tag}"))
+            raise RuntimeError(r.get("error", f"binary frame {tag} failed"))
         return r.get("result")
 
     # --- 요청/응답 ---
@@ -311,7 +305,7 @@ class _Client:
             self.ws.send(json.dumps({"id": rid, "cmd": cmd, "args": args}))
         if not ev.wait(timeout):
             self._pending.pop(rid, None)
-            raise TimeoutError(f"응답 없음: {cmd}")
+            raise TimeoutError(f"no reply to {cmd}")
         r = box[0]
         if not r.get("ok"):
             raise RuntimeError(r.get("error", cmd))

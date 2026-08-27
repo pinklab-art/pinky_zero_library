@@ -48,7 +48,8 @@ class Buzzer:
         """음이름으로 재생. 'C5' / 'A#4' / '도' / 'R'(쉼표)."""
         f = note_freq(name)
         if f is None:
-            raise ValueError(f"모르는 음이름: {name!r} (예: 'C5', 'A#4', '도', 'R')")
+            raise ValueError(f"unknown note {name!r}; "
+                             f"expected e.g. 'C5', 'A#4', '도', 'R'")
         self.play(f, ms)
 
     def melody(self, notes, ms=200, gap_ms=20):

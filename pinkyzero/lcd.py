@@ -10,11 +10,43 @@
     lcd.image("face.png")             # 파일/PIL/ndarray 를 화면에
     lcd.enable(True)                  # 터치 측정 ON
     print(lcd.wait_touch())           # 터치 대기 → {touch,x,y,gesture}
+    lcd.emotion("hello", loop=False)  # 표정 한 번만 ("첫인사" 도 된다)
+    lcd.emotion("joy")                # 계속 반복
+    lcd.emotion()                     # 멈춤
 """
 
 from ._client import BIN_LCD, client
 
 WIDTH, HEIGHT = 284, 240
+
+# 표정 이름: 영어 -> 로봇 캐시의 한글 이름.
+#
+# 캐시 파일은 한글 이름으로 들어 있다(로봇을 만들 때부터 그랬다). 코드에 한글을
+# 치려면 키보드를 바꿔야 하고 오타도 찾기 어려워서 영어 이름을 함께 받는다.
+#
+# **둘 다 받는다** — emotion("happy") 와 emotion("행복") 이 같다.
+# 표에 없는 이름은 그대로 넘기므로 한글은 저절로 통과하고, 표정을 새로 구워
+# 넣었는데 이 표를 아직 안 고친 경우에도 쓸 수 있다.
+EMOTIONS = {
+    "angry":      "화남",
+    "bored":      "지루함",
+    "charging":   "충전중",
+    "curious":    "궁금",
+    "dizzy":      "어지러움",
+    "happy":      "행복",
+    "hello":      "첫인사",
+    "hungry":     "배고픔",
+    "interested": "흥미로움",
+    "joy":        "기쁨",
+    "love":       "좋아함",
+    "neutral":    "무표정",
+    "sad":        "슬픔",
+    "scared":     "무서움",
+    "shy":        "부끄러움",
+    "sleepy":     "졸림",
+    "surprised":  "놀람",
+    "ticklish":   "간지러움",
+}
 
 
 class LCD:
@@ -106,12 +138,56 @@ class LCD:
         """
         self.backlight(True)
 
+    # ---------------- 표정 ----------------
+    def emotion(self, name=None, loop=True, fps=None):
+        """표정을 재생한다. 이름 없이 부르면 멈춘다.
+
+            lcd.emotion("hello", loop=False)   # 한 번만 재생하고 마지막 장면에서 멈춤
+            lcd.emotion("joy")                 # 계속 반복
+            lcd.emotion()                      # 멈춘다
+
+        이름은 **영어와 한글 둘 다** 된다 — "happy" 와 "행복" 이 같다.
+        대소문자와 앞뒤 공백은 무시한다. 쓸 수 있는 이름은 emotions() 로 본다.
+
+        그림은 **로봇 안에 미리 구워둔 것**을 서버가 직접 화면에 올린다. PC 가
+        보내는 것이 아니라서 회선이 느려도 부드럽다(한 장이 136KB 라 보내면
+        초당 몇 MB 다).
+
+        loop=False 는 한 번 재생하고 **마지막 장면을 남긴다**. 그 상태로 두면
+        화면이 멈춰 보이므로, 계속 보여줄 것이면 loop=True 로 두거나 다음 표정을
+        띄운다.
+        """
+        if name is None:
+            client().call("lcd.emotion")        # 이름 없이 = 멈춤
+            return
+        key = str(name).strip()
+        korean = EMOTIONS.get(key.lower(), key)  # 표에 없으면 그대로 넘긴다
+        args = {"name": korean, "loop": bool(loop)}
+        if fps is not None:
+            args["fps"] = float(fps)
+        try:
+            client().call("lcd.emotion", **args)
+        except RuntimeError as e:
+            # 서버는 캐시에 있는 한글 이름으로 알려준다. 영어로 받는 쪽에는
+            # 칠 수도 없는 이름이라 그대로 내보내지 않는다.
+            if "표정 없음" not in str(e):
+                raise
+            raise ValueError(
+                f"unknown emotion {name!r}; expected one of: "
+                f"{', '.join(self.emotions())} (Korean names also work)") from None
+
+    def emotions(self):
+        """이 로봇이 가진 표정 이름(영어). 표에 없는 것은 한글 그대로 나온다."""
+        back = {v: k for k, v in EMOTIONS.items()}
+        return sorted(back.get(n, n) for n in client().call("lcd.emotions"))
+
     def image(self, img, x=0, y=0, w=None, h=None, is_bgr=False):
         """이미지를 화면(또는 (x,y) 영역)에 표시. img: 파일경로/PIL/ndarray(HxWx3).
         PC에서 RGB565 빅엔디안으로 변환 후 서버로 보내 블릿한다."""
         data, W, H = self._to_565be(img, w, h, is_bgr)
         if x + W > WIDTH or y + H > HEIGHT:
-            raise ValueError(f"이미지({W}x{H})가 화면 범위를 벗어남 (at {x},{y})")
+            raise ValueError(f"image {W}x{H} at ({x}, {y}) does not fit "
+                             f"the {WIDTH}x{HEIGHT} screen")
         # 이진으로 보낸다. base64 로 JSON 에 실으면 33% 를 더 보내고(136KB -> 182KB)
         # 양쪽에서 인코딩·디코딩 CPU 까지 쓴다 — 그림 전송이 화면 갱신 속도의 상한이다.
         head = b"".join(int(v).to_bytes(2, "little") for v in (x, y, W, H))
@@ -133,7 +209,7 @@ class LCD:
                 arr = np.asarray(img, dtype=np.uint16)
         except ImportError:
             if isinstance(img, str):
-                raise RuntimeError("이미지 파일 로드에 pillow 필요")
+                raise RuntimeError("loading an image file requires pillow")
         if arr is None:
             a = np.asarray(img)
             if is_bgr:
@@ -143,7 +219,8 @@ class LCD:
                     import cv2
                     a = cv2.resize(a, (tw, th))
                 except ImportError:
-                    raise RuntimeError("ndarray 리사이즈에 opencv 필요(또는 미리 크기 맞추기)")
+                    raise RuntimeError("resizing an ndarray requires opencv; "
+                                       "or pass an array already sized")
             arr = a[:, :, :3].astype(np.uint16)
         r = (arr[:, :, 0] >> 3) << 11
         g = (arr[:, :, 1] >> 2) << 5
