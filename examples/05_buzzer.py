@@ -18,8 +18,12 @@ print("알림음 3번")
 bz.beep(count=3)
 time.sleep(0.5)
 
-print("음이름으로: 도레미파솔")
+print("계이름으로: 도레미파솔")
 bz.melody("도 레 미 파 솔")
+time.sleep(0.5)
+
+print("영어 계이름도 같다: do re mi fa sol")
+bz.melody("do re mi fa sol")
 time.sleep(0.5)
 
 print("영어 음이름도 가능: C5 E5 G5")

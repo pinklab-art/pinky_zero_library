@@ -83,7 +83,7 @@ pinkyzero.connect("localhost")
 | `IMU` | `enable()` `is_enabled()` `read_euler()` `heading()` `read_gyro()` `read_accel()` `calibration_status()` `calibrate()` `read()` |
 | `Motor` | `enable()` `set_rpm(l, r)` `stop()` `get_rpm()` `get_encoder()` `get_revolutions()` |
 | `LED` | `set_color(r,g,b)` `blink()` `dimming()` `off()` |
-| `Buzzer` | `play(freq, ms)` `beep(count=)` `note('C5' / '도')` `melody()` `off()` |
+| `Buzzer` | `play(freq, ms)` `beep(count=)` `note('C5' / '도' / 'do')` `melody()` `off()` |
 | `Camera` | `start(fps)` `stop()` `read()` `read_array()` `snapshot()` `set_callback()` |
 | `LCD` | `fill(r,g,b)` `clear()` `image(img)` `backlight()` `on()` `off()` |
 | `LCD` 터치 | `enable()` `read_touch()` `touched()` `read_gesture()` `wait_touch()` `wait_gesture()` |
