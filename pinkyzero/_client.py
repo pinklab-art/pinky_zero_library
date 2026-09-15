@@ -81,6 +81,10 @@ class _Client:
         self._frame = None
         self._frame_ts = 0.0
         self._cam_cb = None
+        # 카메라를 켠 fps. 끊겼다 다시 붙으면 이 값으로 카메라를 다시 신청한다.
+        # 서버는 카메라를 **접속마다** 보내고 재연결은 새 접속이라, 다시 신청하지 않으면
+        # 카메라는 켜져 있는데 프레임이 안 온다(2026-09-15 실측: 재연결 뒤 4초 동안 0장).
+        self._cam_fps = None
         self._stream_hz = 30
         self._want = False
         self._connected = threading.Event()
@@ -140,6 +144,7 @@ class _Client:
 
     def disconnect(self):
         self._want = False
+        self._cam_fps = None      # 일부러 끊었다 다시 붙을 때 카메라가 저절로 켜지지 않게
         try:
             self.ws.close()
         except Exception:
@@ -186,6 +191,10 @@ class _Client:
                 init = [("hello", {"role": "coding", "binv": BIN_VERSION})]
                 if self._stream_hz:
                     init.append(("stream.on", {"hz": self._stream_hz}))
+                if self._cam_fps:
+                    # subscribe 가 아니라 start 다 — 로봇 서버가 재시작돼 카메라가 꺼진
+                    # 경우에도, 학생 코드는 stop() 을 부른 적이 없으니 다시 켜 준다.
+                    init.append(("camera.start", {"fps": self._cam_fps}))
                 for cmd, args in init:
                     try:
                         with self._send_lock:
@@ -251,9 +260,15 @@ class _Client:
         예전엔 이진이면 무조건 카메라였다 — 그래서 다른 용도를 쓸 수 없었다."""
         if len(msg) < BIN_HDR:
             return
-        tag = msg[0]
-        rid = int.from_bytes(msg[1:5], "little")
-        body = msg[BIN_HDR:]
+        if msg[:2] == b"\xff\xd8":
+            # 머리 없는 JPEG — 서버의 camera.snapshot 은 이렇게 보낸다. 예전엔 첫 바이트를
+            # 모르는 종류로 보고 버려서, 스트림을 안 받는 중이면 snapshot() 이 빈손이었다.
+            # JPEG 는 항상 FF D8 로 시작하고 머리 종류는 0x01~0x04 라 헷갈릴 일이 없다.
+            tag, rid, body = BIN_CAMERA, 0, msg
+        else:
+            tag = msg[0]
+            rid = int.from_bytes(msg[1:5], "little")
+            body = msg[BIN_HDR:]
         if tag == BIN_CAMERA:
             self._frame = body
             self._frame_ts = time.time()
