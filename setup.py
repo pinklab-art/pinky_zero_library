@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="pinkyzero",
-    version="0.2.1",
+    version="0.2.2",
     description="Pinky Zero PC client library (WebSocket remote control)",
     packages=find_packages(),
     python_requires=">=3.8",

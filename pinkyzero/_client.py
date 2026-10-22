@@ -174,12 +174,20 @@ class _Client:
 
     # --- 감독 루프: 끊기면 자동 재연결 ---
     def _supervisor(self, timeout):
+        # _teardown 은 2초만 기다린다. 틀린 주소로 붙던 중이면 create_connection 이
+        # timeout(5초)까지 안 풀려, 그 사이 새 connect() 가 _want 를 다시 올리면
+        # 옛 루프가 살아나 같은 로봇에 연결이 둘 생겼다(disconnect 가 하나만 닫아
+        # 로봇이 코딩모드에 남음). 그래서 "내가 지금 감독인가"를 따로 본다.
+        me = threading.current_thread()
         backoff = 0.5
-        while self._want:
+        while self._want and self._sup is me:
+            ws = None
             try:
                 ws = websocket.create_connection(self.url, timeout=timeout,
                                                  max_size=None, enable_multithread=True)
                 ws.settimeout(5)
+                if self._sup is not me:             # 붙는 사이 넘겨줬다 → 이 연결은 버린다
+                    raise ConnectionError("superseded")
                 self.ws = ws
                 self._ever = True
                 self._connected.set()
@@ -202,10 +210,16 @@ class _Client:
                                                 "cmd": cmd, "args": args}))
                     except Exception:
                         pass
-                self._reader()                      # 끊길 때까지 블록
+                self._reader(me)                    # 끊길 때까지 블록
             except Exception:
                 pass
             # --- 끊김 처리 ---
+            if self._sup is not me:                 # 새 감독의 ws·대기표는 건드리지 않는다
+                try:
+                    ws and ws.close()
+                except Exception:
+                    pass
+                break
             self._connected.clear()
             try:
                 self.ws.close()
@@ -220,8 +234,8 @@ class _Client:
             time.sleep(backoff)
             backoff = min(5.0, backoff * 1.7)
 
-    def _reader(self):
-        while self._want:
+    def _reader(self, me):
+        while self._want and self._sup is me:
             try:
                 msg = self.ws.recv()
             except websocket.WebSocketTimeoutException:
